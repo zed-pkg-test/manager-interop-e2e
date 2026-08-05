@@ -19,7 +19,7 @@ Source organization: `zed-pkg`
 
 | Source | Commit | Branch observed |
 |---|---:|---|
-| `zed-pkg/zed-cli` | `d0f70105d13ff1d3fddf7671bac50940f14d69a6` | `main` |
+| `zed-pkg/zed-cli` | `7977b1d43231a68e1ac34903e0f18cef5135add6` | `main` |
 
 ## Dependency lanes
 
