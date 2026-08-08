@@ -15,7 +15,6 @@ import platform
 import shutil
 import subprocess
 import sys
-import tempfile
 import time
 import tomllib
 from dataclasses import asdict, dataclass
@@ -239,9 +238,13 @@ def validate_manager_output(root: Path, manager: str, output_relative: Path) -> 
         if document.get("shell", {}).get("init_hook") != ["zed install --frozen"]:
             raise CertificationFailure(f"Devbox activation drift: {document!r}")
         packages = document.get("packages")
+        # A requirement with no package-local platform selector inherits the
+        # plan-level platform set. Keep this independent expectation aligned
+        # with the frozen plan contract rather than omitting the effective
+        # platform from one package class.
         expected = {
             "gitFull": {"version": "2.47.0", "platforms": ["x86_64-linux"]},
-            "nodejs_22": {"version": "22.11.0"},
+            "nodejs_22": {"version": "22.11.0", "platforms": ["x86_64-linux"]},
         }
         if packages != expected:
             raise CertificationFailure(f"Devbox package projection drift: {packages!r}")
@@ -547,7 +550,11 @@ def case_paths_and_managers_fail_closed(
         env=env,
         expect_success=False,
     )
-    if "invalid value" not in staged_invalid.stderr.lower():
+    # The main CLI parses an enum value while the focused staged CLI parses a
+    # subcommand. Both are typed fail-closed boundaries; their Clap wording is
+    # intentionally different.
+    staged_diagnostic = staged_invalid.stderr.lower()
+    if "unrecognized subcommand" not in staged_diagnostic and "invalid value" not in staged_diagnostic:
         raise CertificationFailure(f"staged invalid-manager boundary drift: {staged_invalid.stderr}")
 
 
