@@ -1,0 +1,140 @@
+name: canonical Devbox and Flox export canary
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/devbox-flox-export-canary.yml
+      - scripts/devbox_flox_export_canary.py
+      - contracts/devbox-flox-export.md
+      - canaries/devbox-flox-export.json
+  workflow_dispatch:
+    inputs:
+      candidate:
+        description: Full immutable zed-pkg/zed-cli commit to certify
+        required: false
+        default: c1563f43094e95aec6443ee79d573e220c0706cb
+
+permissions:
+  contents: read
+
+concurrency:
+  group: devbox-flox-export-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  ZED_CLI_COMMIT: ${{ inputs.candidate || 'c1563f43094e95aec6443ee79d573e220c0706cb' }}
+  CARGO_TERM_COLOR: always
+
+jobs:
+  certify:
+    name: Devbox/Flox export / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2025]
+
+    steps:
+      - name: Check out independent manager harness
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          show-progress: false
+
+      - name: Check out exact product candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: zed-pkg/zed-cli
+          ref: ${{ env.ZED_CLI_COMMIT }}
+          path: product/zed-cli
+          fetch-depth: 1
+          persist-credentials: false
+          show-progress: false
+
+      - name: Verify immutable candidate identity
+        run: |
+          set -euo pipefail
+          [[ "$ZED_CLI_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git -C product/zed-cli rev-parse HEAD)" = "$ZED_CLI_COMMIT"
+          test "$(python -c 'import json; print(json.load(open("canaries/devbox-flox-export.json"))["candidate"])')" = "$ZED_CLI_COMMIT"
+
+      - name: Install Rust quality toolchain
+        uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30
+        with:
+          toolchain: stable
+          components: rustfmt,clippy
+
+      - name: Install Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate product formatting and focused contracts
+        working-directory: product/zed-cli
+        run: |
+          set -euo pipefail
+          cargo fmt --all --check
+          cargo test --locked --lib nix_environment_export::tests
+          cargo test --locked --test nix_environment_export_cli
+          cargo test --locked --test nix_environment_export_main_cli
+          cargo clippy --locked --bin zed --bin zed-env-export \
+            --test nix_environment_export_cli \
+            --test nix_environment_export_main_cli -- -D warnings
+
+      - name: Build exact release binaries
+        working-directory: product/zed-cli
+        run: |
+          set -euo pipefail
+          cargo build --locked --release --bin zed --bin zed-env-export
+
+      - name: Select platform binary paths
+        run: |
+          set -euo pipefail
+          zed="$GITHUB_WORKSPACE/product/zed-cli/target/release/zed"
+          staged="$GITHUB_WORKSPACE/product/zed-cli/target/release/zed-env-export"
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            zed="${zed}.exe"
+            staged="${staged}.exe"
+          fi
+          test -f "$zed"
+          test -f "$staged"
+          echo "ZED_BINARY=$zed" >> "$GITHUB_ENV"
+          echo "ZED_ENV_EXPORT_BINARY=$staged" >> "$GITHUB_ENV"
+
+      - name: Run independent black-box certification
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/devbox_flox_export_canary.py
+          python scripts/devbox_flox_export_canary.py \
+            --zed "$ZED_BINARY" \
+            --staged "$ZED_ENV_EXPORT_BINARY" \
+            --candidate "$ZED_CLI_COMMIT" \
+            --work "$RUNNER_TEMP/devbox-flox-export-canary" \
+            --evidence "artifacts/devbox-flox-${RUNNER_OS}-${RUNNER_ARCH}.json"
+          find scripts -type d -name __pycache__ -prune -exec rm -rf {} +
+
+      - name: Require clean source checkouts
+        run: |
+          set -euo pipefail
+          git diff --exit-code
+          git status --porcelain=v1 --untracked-files=all | tee "$RUNNER_TEMP/harness-status.txt"
+          test ! -s "$RUNNER_TEMP/harness-status.txt"
+          git -C product/zed-cli diff --exit-code
+          git -C product/zed-cli status --porcelain=v1 --untracked-files=all \
+            | tee "$RUNNER_TEMP/product-status.txt"
+          test ! -s "$RUNNER_TEMP/product-status.txt"
+
+      - name: Upload commit-addressed evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: devbox-flox-${{ runner.os }}-${{ runner.arch }}-${{ env.ZED_CLI_COMMIT }}
+          path: artifacts/devbox-flox-${{ runner.os }}-${{ runner.arch }}.json
+          if-no-files-found: error
+          retention-days: 14
