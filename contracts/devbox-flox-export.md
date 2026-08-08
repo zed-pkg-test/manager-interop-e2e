@@ -56,6 +56,8 @@ The black-box contract verifies:
 - byte-identical manager files and Zed-owned receipts;
 - independent parsing of Devbox JSON and Flox TOML;
 - exact package, platform, version, and frozen-install activation projection;
+- inheritance of plan-level platforms by requirements that omit a narrower
+  package-local selector, in both Devbox package metadata and Flox `systems`;
 - independent SHA-256 validation of output and receipt identities;
 - deterministic repeated exports and `changed=false` idempotence;
 - custom path and flags-to-environment parity;
