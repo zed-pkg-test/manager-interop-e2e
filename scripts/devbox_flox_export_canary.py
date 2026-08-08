@@ -263,7 +263,11 @@ def validate_manager_output(root: Path, manager: str, output_relative: Path) -> 
                 "version": "2.47.0",
                 "systems": ["aarch64-darwin"],
             },
-            "node": {"pkg-path": "nodejs_22", "version": "22.11.0"},
+            "node": {
+    "pkg-path": "nodejs_22",
+    "version": "22.11.0",
+    "systems": ["aarch64-darwin"],
+  },
         }
         if install != expected:
             raise CertificationFailure(f"Flox package projection drift: {install!r}")
