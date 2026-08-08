@@ -1,0 +1,39 @@
+{
+  "schema": "zed-pkg-test/manager-candidate/v1",
+  "name": "canonical-devbox-flox-export",
+  "candidate_repository": "zed-pkg/zed-cli",
+  "candidate_pull_request": 218,
+  "candidate": "137e760ae2835492b537a748013371b4a3abc37f",
+  "platforms": [
+    "ubuntu-24.04",
+    "macos-15",
+    "windows-2025"
+  ],
+  "binaries": [
+    "zed",
+    "zed-env-export"
+  ],
+  "managers": [
+    "devbox",
+    "flox"
+  ],
+  "claims": [
+    "canonical and staged result streams are byte-identical",
+    "canonical and staged manager output bytes are byte-identical",
+    "canonical and staged receipt bytes are byte-identical",
+    "repeated identical exports are deterministic and idempotent",
+    "flags and environment variables select equivalent paths",
+    "differing human-owned outputs and receipts are not modified",
+    "path escape and output-receipt aliasing fail before writes",
+    "manager-specific options and unsupported Flox platforms fail closed",
+    "runtime export requires no manager executable, network service, or persistent credential"
+  ],
+  "non_claims": [
+    "Devbox native lock generation",
+    "Flox native lock generation",
+    "manager shell activation",
+    "offline replay through a manager-native lock",
+    "semantic merging of hand-authored manager configuration",
+    "Nix evaluation of generated configuration"
+  ]
+}
