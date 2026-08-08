@@ -12,7 +12,7 @@ on:
       candidate:
         description: Full immutable zed-pkg/zed-cli commit to certify
         required: false
-        default: c1563f43094e95aec6443ee79d573e220c0706cb
+        default: 1079c51427cc7f32188f4c26603b2ebb164d3e57
 
 permissions:
   contents: read
@@ -26,7 +26,7 @@ defaults:
     shell: bash
 
 env:
-  ZED_CLI_COMMIT: ${{ inputs.candidate || 'c1563f43094e95aec6443ee79d573e220c0706cb' }}
+  ZED_CLI_COMMIT: ${{ inputs.candidate || '1079c51427cc7f32188f4c26603b2ebb164d3e57' }}
   CARGO_TERM_COLOR: always
 
 jobs:
@@ -140,10 +140,10 @@ jobs:
           test ! -s "$RUNNER_TEMP/product-status.txt"
 
       - name: Upload commit-addressed evidence
-        if: ${{ !cancelled() }}
+        if: ${{ always() && !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: devbox-flox-${{ runner.os }}-${{ runner.arch }}-${{ env.ZED_CLI_COMMIT }}
           path: artifacts/devbox-flox-${{ runner.os }}-${{ runner.arch }}.json
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
