@@ -3,7 +3,7 @@
   "name": "canonical-devbox-flox-export",
   "candidate_repository": "zed-pkg/zed-cli",
   "candidate_pull_request": 218,
-  "candidate": "1079c51427cc7f32188f4c26603b2ebb164d3e57",
+  "candidate": "137e760ae2835492b537a748013371b4a3abc37f",
   "platforms": [
     "ubuntu-24.04",
     "macos-15",
