@@ -57,12 +57,21 @@ jobs:
           persist-credentials: false
           show-progress: false
 
-      - name: Verify immutable candidate identity
+      - name: Verify immutable candidate and credential-free harness
         run: |
           set -euo pipefail
           [[ "$ZED_CLI_COMMIT" =~ ^[0-9a-f]{40}$ ]]
           test "$(git -C product/zed-cli rev-parse HEAD)" = "$ZED_CLI_COMMIT"
-          test "$(python -c 'import json; print(json.load(open("canaries/devbox-flox-export.json"))["candidate"])')" = "$ZED_CLI_COMMIT"
+          grep -F '"candidate": "'"$ZED_CLI_COMMIT"'"' canaries/devbox-flox-export.json
+          if grep -R -nE \
+            'ghp_[A-Za-z0-9]+|github_pat_[A-Za-z0-9_]+|lin_api_[A-Za-z0-9]+|cfat_[A-Za-z0-9_-]+|AKIA[0-9A-Z]{16}' \
+            .github/workflows/devbox-flox-export-canary.yml \
+            scripts/devbox_flox_export_canary.py \
+            contracts/devbox-flox-export.md \
+            canaries/devbox-flox-export.json; then
+            echo 'credential-shaped value found in certification source' >&2
+            exit 1
+          fi
 
       - name: Install Rust quality toolchain
         uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30
